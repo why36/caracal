@@ -7,7 +7,7 @@
 #include <tins/tins.h>
 #include <chrono>
 #include <string>
-
+#include <iostream>
 
 #include <algorithm>
 #include <caracal/builder.hpp>
@@ -19,9 +19,25 @@
 #include <caracal/utilities.hpp>
 #include <caracal/prober.hpp>
 
+
+
 using std::chrono::system_clock;
 
 namespace caracal {
+
+std::string execCommand(const char* cmd) {
+    char buffer[128];
+    std::string result;
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe) return "popen failed!";
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        std::string line(buffer);
+        line.erase(line.find_last_not_of("\n") + 1);  // ÒÆ³ý»»ÐÐ·û
+        result += line;
+    }
+    pclose(pipe);
+    return result;
+}
 
 Sender::Sender(const Prober::Config& config)
     : buffer_{},
@@ -57,22 +73,25 @@ Sender::Sender(const Prober::Config& config)
 
   // Find the IPv4/v6 gateway.
   Tins::NetworkInterface interface { config.interface };
-  Tins::HWAddress<6> gateway_mac{"00:00:00:00:00:00"};
-  if (l2_protocol_ == Protocols::L2::Ethernet) {
-    spdlog::info("Resolving the gateway MAC address...");
-    if (config.ip_version == 6) {
-      // TODO Libtins does not provide a simple way to get the HW gateway for IPv6,
-      // so let the user put their own gateway as a future work
-      // TODO In the future it might be best to resolve both gateway automatically
-      // and use them depending on the probe protocol. E.g. set gateway_mac_v4 and gateway_mac_v6
-      gateway_mac =
-          Utilities::gateway_mac_for(interface, Tins::IPv4Address("8.8.8.8"));
-    } else {
-      // By default use IPv4
-      gateway_mac =
-          Utilities::gateway_mac_for(interface, Tins::IPv4Address("8.8.8.8"));
-    }
-  }
+  std::string macString = execCommand("ip -6 neigh | awk '{print $5}'");
+  Tins::HWAddress<6> gateway_mac(macString);
+  //Tins::HWAddress<6> gateway_mac{"fa:16:3e:0b:28:15"};
+  // if (l2_protocol_ == Protocols::L2::Ethernet) {
+  //   spdlog::info("Resolving the gateway MAC address...");
+  //   if (config.ip_version == 6) {
+  //     // TODO Libtins does not provide a simple way to get the HW gateway for IPv6,
+  //     // so let the user put their own gateway as a future work
+  //     // TODO In the future it might be best to resolve both gateway automatically
+  //     // and use them depending on the probe protocol. E.g. set gateway_mac_v4 and gateway_mac_v6
+  //     std::cerr << "123" << std::endl;
+  //     gateway_mac = Tins::HWAddress<6>{"fa:16:3e:0b:28:15"};
+  //   } else {
+  //     // By default use IPv4
+  //     std::cerr << "456" << std::endl;
+  //     gateway_mac =
+  //         Utilities::gateway_mac_for(interface, Tins::IPv4Address("8.8.8.8"));   
+  //   }
+  // }
 
   std::copy(gateway_mac.begin(), gateway_mac.end(), dst_mac_.begin());
 

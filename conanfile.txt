@@ -5,10 +5,11 @@ libtins/4.4
 spdlog/1.10.0
 
 [generators]
-cmake_find_package
+CMakeDeps
+CMakeToolchain
 
 [options]
-libtins:with_ack_tracker=False
-libtins:with_tcp_stream_custom_data=False
-libtins:with_dot11=False
-libtins:with_wpa2=False
+libtins/*:with_ack_tracker=False
+libtins/*:with_tcp_stream_custom_data=False
+libtins/*:with_dot11=False
+libtins/*:with_wpa2=False
